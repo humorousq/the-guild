@@ -163,3 +163,54 @@ describe('WorkflowEngine - 阶段执行', () => {
     ).rejects.toThrow('input 必须是对象类型')
   })
 })
+
+describe('WorkflowEngine - 模块集成', () => {
+  let engine
+  let tempDir
+
+  beforeEach(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'book-crafter-test-'))
+    engine = new WorkflowEngine(tempDir)
+    await engine.init()
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('应该执行阶段 1-3 并生成项目骨架', async () => {
+    // 阶段1: 项目初始化
+    await engine.executeStage(1, { projectPath: tempDir })
+    await engine.completeStage(1, { projectPath: tempDir })
+
+    // 验证阶段1完成
+    const state1 = await engine.getState()
+    expect(state1.currentStage).toBe(2)
+
+    // 阶段2: 分析与规划（直接传入分析结果）
+    const analysis = {
+      title: 'Test Book',
+      description: 'A test book for integration testing',
+      chapters: [
+        { number: 1, title: 'Chapter 1', description: 'First chapter', file: 'chapter-01.md' },
+        { number: 2, title: 'Chapter 2', description: 'Second chapter', file: 'chapter-02.md' }
+      ]
+    }
+
+    await engine.executeStage(2, { analysis })
+    await engine.completeStage(2, { analysis })
+
+    // 验证 BOOK_CONTEXT.md 生成
+    const contextPath = path.join(tempDir, 'BOOK_CONTEXT.md')
+    expect(fs.existsSync(contextPath)).toBe(true)
+
+    // 阶段3: 框架生成
+    await engine.executeStage(3, { analysis })
+    await engine.completeStage(3, { projectPath: tempDir })
+
+    // 验证生成的文件
+    expect(fs.existsSync(path.join(tempDir, 'package.json'))).toBe(true)
+    expect(fs.existsSync(path.join(tempDir, 'docs', '.vitepress', 'config.mts'))).toBe(true)
+    expect(fs.existsSync(path.join(tempDir, 'docs', 'chapter-01.md'))).toBe(true)
+  })
+})
