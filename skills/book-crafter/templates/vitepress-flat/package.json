@@ -1,0 +1,18 @@
+{
+  "name": "my-book",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "技术书籍项目",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "generate:pdf": "node scripts/generate-pdf.mjs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.5.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

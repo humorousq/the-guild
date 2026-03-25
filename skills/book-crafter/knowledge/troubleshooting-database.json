@@ -1,0 +1,234 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-03-25",
+  "issues": [
+    {
+      "id": "node-version-mismatch",
+      "category": "environment",
+      "severity": "high",
+      "title": "Node.js 版本不匹配",
+      "description": "本地 Node.js 版本与 GitHub Actions 使用的版本不一致",
+      "symptoms": [
+        "本地构建成功但 CI 失败",
+        "依赖安装行为不同",
+        "构建输出不一致"
+      ],
+      "causes": [
+        "GitHub Actions workflow 中指定的 Node.js 版本与本地不同",
+        "未在项目中明确指定 Node.js 版本要求"
+      ],
+      "solutions": [
+        {
+          "step": 1,
+          "action": "检查本地 Node.js 版本",
+          "command": "node --version"
+        },
+        {
+          "step": 2,
+          "action": "更新 GitHub Actions workflow",
+          "example": "- uses: actions/setup-node@v4\n  with:\n    node-version: '22.13.0'"
+        },
+        {
+          "step": 3,
+          "action": "在 package.json 中添加 engines 字段",
+          "example": "\"engines\": { \"node\": \">=22.13.0\" }"
+        }
+      ],
+      "relatedDocs": "knowledge/node-version-issues.md"
+    },
+    {
+      "id": "missing-lock-file",
+      "category": "dependencies",
+      "severity": "high",
+      "title": "缺少 lock 文件",
+      "description": "项目缺少 package-lock.json 文件",
+      "symptoms": [
+        "每次 npm install 安装的依赖版本可能不同",
+        "团队成员之间依赖版本不一致",
+        "CI 构建结果不可预测"
+      ],
+      "causes": [
+        "lock 文件被 .gitignore 忽略",
+        "从未运行过 npm install"
+      ],
+      "solutions": [
+        {
+          "step": 1,
+          "action": "生成 lock 文件",
+          "command": "npm install"
+        },
+        {
+          "step": 2,
+          "action": "确保 lock 文件未被忽略",
+          "note": "检查 .gitignore 中是否包含 package-lock.json，如有则移除"
+        },
+        {
+          "step": 3,
+          "action": "提交 lock 文件",
+          "command": "git add package-lock.json && git commit -m 'chore: add package-lock.json'"
+        }
+      ],
+      "relatedDocs": null
+    },
+    {
+      "id": "platform-deps-mismatch",
+      "category": "environment",
+      "severity": "medium",
+      "title": "平台依赖不匹配",
+      "description": "本地平台与 CI 平台的依赖配置不一致",
+      "symptoms": [
+        "本地运行正常但 CI 失败",
+        "Rollup 或其他原生模块加载失败",
+        "构建过程中出现平台相关错误"
+      ],
+      "causes": [
+        "原生依赖未正确配置 optionalDependencies",
+        "CI 环境（Linux）与本地环境（macOS/Windows）不同"
+      ],
+      "solutions": [
+        {
+          "step": 1,
+          "action": "检查项目是否使用原生依赖",
+          "note": "常见原生依赖：@rollup/rollup-*, esbuild, sharp 等"
+        },
+        {
+          "step": 2,
+          "action": "配置 optionalDependencies",
+          "example": "\"optionalDependencies\": {\n  \"@rollup/rollup-linux-x64-gnu\": \"^4.9.0\"\n}"
+        },
+        {
+          "step": 3,
+          "action": "使用 package-lock.json 锁定版本"
+        }
+      ],
+      "relatedDocs": "knowledge/platform-deps.md"
+    },
+    {
+      "id": "vitepress-build-fail",
+      "category": "build",
+      "severity": "high",
+      "title": "VitePress 构建失败",
+      "description": "VitePress 项目构建过程中出错",
+      "symptoms": [
+        "vitepress build 命令失败",
+        "Markdown 渲染错误",
+        "组件导入失败"
+      ],
+      "causes": [
+        "Markdown 语法错误",
+        "自定义组件路径错误",
+        "配置文件错误"
+      ],
+      "solutions": [
+        {
+          "step": 1,
+          "action": "检查构建错误日志",
+          "command": "npm run docs:build 2>&1 | tee build.log"
+        },
+        {
+          "step": 2,
+          "action": "验证配置文件",
+          "note": "检查 docs/.vitepress/config.mts 语法"
+        },
+        {
+          "step": 3,
+          "action": "检查 Markdown 文件语法",
+          "note": "确保所有链接和引用有效"
+        }
+      ],
+      "relatedDocs": null
+    },
+    {
+      "id": "github-pages-deploy-fail",
+      "category": "deployment",
+      "severity": "high",
+      "title": "GitHub Pages 部署失败",
+      "description": "自动部署到 GitHub Pages 失败",
+      "symptoms": [
+        "GitHub Actions 显示部署失败",
+        "Pages 站点显示 404",
+        "静态资源加载失败"
+      ],
+      "causes": [
+        "GitHub Pages 未启用",
+        "base 配置错误",
+        "构建输出目录配置错误"
+      ],
+      "solutions": [
+        {
+          "step": 1,
+          "action": "启用 GitHub Pages",
+          "note": "在仓库 Settings > Pages 中选择 GitHub Actions 作为源"
+        },
+        {
+          "step": 2,
+          "action": "检查 base 配置",
+          "example": "// 如果仓库名为 my-book\nexport default defineConfig({\n  base: '/my-book/'\n})"
+        },
+        {
+          "step": 3,
+          "action": "验证 workflow 配置",
+          "note": "确保 actions/deploy-pages 配置正确"
+        }
+      ],
+      "relatedDocs": null
+    },
+    {
+      "id": "pdf-generation-fail",
+      "category": "build",
+      "severity": "medium",
+      "title": "PDF 生成失败",
+      "description": "无法生成 PDF 版本的书籍",
+      "symptoms": [
+        "PDF 生成脚本执行失败",
+        "生成的 PDF 为空或损坏",
+        "样式丢失"
+      ],
+      "causes": [
+        "未安装 PDF 生成依赖",
+        "构建输出目录不正确",
+        "内存不足"
+      ],
+      "solutions": [
+        {
+          "step": 1,
+          "action": "检查 PDF 生成依赖",
+          "command": "npm install --save-dev puppeteer"
+        },
+        {
+          "step": 2,
+          "action": "验证构建是否成功",
+          "command": "npm run docs:build"
+        },
+        {
+          "step": 3,
+          "action": "运行 PDF 生成脚本",
+          "command": "node scripts/generate-pdf.mjs"
+        }
+      ],
+      "relatedDocs": null
+    }
+  ],
+  "categories": [
+    {
+      "id": "environment",
+      "name": "环境问题",
+      "description": "Node.js、平台等环境相关问题"
+    },
+    {
+      "id": "dependencies",
+      "name": "依赖问题",
+      "description": "npm 包、lock 文件等依赖相关问题"
+    },
+    {
+      "id": "build",
+      "name": "构建问题",
+      "description": "VitePress 构建、PDF 生成等构建相关问题"
+    },
+    {
+      "id": "deployment",
+      "name": "部署问题",
+      "description": "GitHub Pages、CI/CD 等部署相关问题"
+    }
+  ]
+}
