@@ -1,0 +1,8 @@
+{
+  "name": "sample-book",
+  "version": "1.0.0",
+  "description": "A sample VitePress book for testing",
+  "dependencies": {
+    "vitepress": "^1.0.0"
+  }
+}
