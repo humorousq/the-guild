@@ -1,0 +1,23 @@
+{
+  "name": "book-crafter",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AI 驱动的书籍创建技能，支持部署到 GitHub Pages",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "npm test -- --watch"
+  },
+  "keywords": ["skill", "book", "vitepress", "ai"],
+  "author": "The Guild",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "simple-git": "^3.22.0",
+    "@octokit/rest": "^20.0.2",
+    "fast-glob": "^3.3.0",
+    "markdown-it": "^14.0.0",
+    "chalk": "^5.3.0"
+  }
+}
