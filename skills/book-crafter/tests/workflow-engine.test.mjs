@@ -100,3 +100,66 @@ describe('WorkflowEngine - 状态管理', () => {
     expect(() => new WorkflowEngine(123)).toThrow('projectPath 必须是非空字符串')
   })
 })
+
+describe('WorkflowEngine - 阶段执行', () => {
+  let engine
+  let tempDir
+
+  beforeEach(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'book-crafter-test-'))
+    engine = new WorkflowEngine(tempDir)
+    await engine.init()
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('应该执行阶段1', async () => {
+    const result = await engine.executeStage(1, {
+      projectPath: tempDir
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.output.projectPath).toBe(tempDir)
+
+    const state = await engine.getState()
+    expect(state.stages['1'].status).toBe('pending') // executeStage 不改变状态
+  })
+
+  test('应该执行下一阶段', async () => {
+    await engine.executeStage(1, { projectPath: tempDir })
+    await engine.nextStage()
+
+    const state = await engine.getState()
+    expect(state.currentStage).toBe(2)
+    expect(state.stages['1'].status).toBe('completed')
+  })
+
+  test('应该拒绝跳过阶段', async () => {
+    await expect(
+      engine.executeStage(3, {})
+    ).rejects.toThrow('必须先完成阶段 2')
+  })
+
+  test('应该恢复执行', async () => {
+    await engine.executeStage(1, { projectPath: tempDir })
+    await engine.completeStage(1, { projectPath: tempDir })
+
+    const newEngine = new WorkflowEngine(tempDir)
+    await newEngine.resume()
+
+    const state = await newEngine.getState()
+    expect(state.currentStage).toBe(3)
+  })
+
+  test('应该拒绝无效的 input 参数', async () => {
+    await expect(
+      engine.executeStage(1, 'invalid')
+    ).rejects.toThrow('input 必须是对象类型')
+
+    await expect(
+      engine.executeStage(1, 123)
+    ).rejects.toThrow('input 必须是对象类型')
+  })
+})

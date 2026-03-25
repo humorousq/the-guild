@@ -86,6 +86,105 @@ export class WorkflowEngine {
   }
 
   /**
+   * 执行指定阶段
+   */
+  async executeStage(stageNumber, input = {}) {
+    const state = await this.getState()
+
+    // 验证阶段编号
+    if (stageNumber < 1 || stageNumber > 6) {
+      throw new Error(`无效的阶段编号: ${stageNumber}`)
+    }
+
+    // 验证 input 参数
+    if (input !== null && typeof input !== 'object') {
+      throw new Error('input 必须是对象类型')
+    }
+
+    // 验证是否可以执行该阶段
+    if (stageNumber > 1) {
+      const prevStage = state.stages[stageNumber - 1]
+      if (prevStage.status !== 'completed') {
+        throw new Error(`必须先完成阶段 ${stageNumber - 1}`)
+      }
+    }
+
+    this.#logger.section(`执行阶段 ${stageNumber}: ${state.stages[stageNumber].name}`)
+
+    // 根据阶段编号执行相应的处理
+    const handlers = {
+      1: this.#executeStage1.bind(this),
+      2: this.#executeStage2.bind(this),
+      3: this.#executeStage3.bind(this),
+      4: this.#executeStage4.bind(this),
+      5: this.#executeStage5.bind(this),
+      6: this.#executeStage6.bind(this)
+    }
+
+    const result = await handlers[stageNumber](input)
+
+    return result
+  }
+
+  /**
+   * 执行下一阶段
+   */
+  async nextStage(input = {}) {
+    const state = await this.getState()
+    const nextStage = state.currentStage
+
+    const result = await this.executeStage(nextStage, input)
+    await this.completeStage(nextStage, result.output)
+
+    return result
+  }
+
+  /**
+   * 恢复执行
+   */
+  async resume() {
+    const state = await this.getState()
+    this.#logger.info(`恢复执行，当前阶段: ${state.currentStage}`)
+
+    return await this.nextStage()
+  }
+
+  /**
+   * 阶段1: 项目初始化
+   */
+  async #executeStage1(input) {
+    return {
+      success: true,
+      output: {
+        projectPath: input.projectPath || this.#projectPath
+      }
+    }
+  }
+
+  /**
+   * 阶段2-6: 占位实现
+   */
+  async #executeStage2(input) {
+    return { success: true, output: {} }
+  }
+
+  async #executeStage3(input) {
+    return { success: true, output: {} }
+  }
+
+  async #executeStage4(input) {
+    return { success: true, output: {} }
+  }
+
+  async #executeStage5(input) {
+    return { success: true, output: {} }
+  }
+
+  async #executeStage6(input) {
+    return { success: true, output: {} }
+  }
+
+  /**
    * 保存状态到文件
    */
   async #saveState() {
