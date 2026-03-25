@@ -93,4 +93,10 @@ describe('WorkflowEngine - 状态管理', () => {
     const newEngine = new WorkflowEngine(tempDir)
     await expect(newEngine.getState()).rejects.toThrow('工作流未初始化')
   })
+
+  test('应该拒绝无效的 projectPath 参数', () => {
+    expect(() => new WorkflowEngine(null)).toThrow('projectPath 必须是非空字符串')
+    expect(() => new WorkflowEngine('')).toThrow('projectPath 必须是非空字符串')
+    expect(() => new WorkflowEngine(123)).toThrow('projectPath 必须是非空字符串')
+  })
 })

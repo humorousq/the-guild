@@ -9,6 +9,9 @@ export class WorkflowEngine {
   #state
 
   constructor(projectPath) {
+    if (!projectPath || typeof projectPath !== 'string') {
+      throw new Error('projectPath 必须是非空字符串')
+    }
     this.#projectPath = projectPath
     this.#statePath = path.join(projectPath, '.book-crafter', 'state.json')
     this.#logger = new Logger()
@@ -21,13 +24,7 @@ export class WorkflowEngine {
   async init() {
     // 创建状态目录
     const stateDir = path.dirname(this.#statePath)
-    try {
-      await fs.mkdir(stateDir, { recursive: true })
-    } catch (error) {
-      if (error.code !== 'EEXIST') {
-        throw error
-      }
-    }
+    await fs.mkdir(stateDir, { recursive: true })
 
     // 初始化状态
     this.#state = {
