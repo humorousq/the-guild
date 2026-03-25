@@ -3,6 +3,5 @@ export default {
   testMatch: ['**/*.test.mjs'],
   transform: {},
   moduleFileExtensions: ['mjs', 'js', 'json'],
-  extensionsToTreatAsEsm: ['.mjs'],
   verbose: true
 }
