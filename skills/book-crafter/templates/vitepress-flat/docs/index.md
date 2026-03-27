@@ -1,5 +1,5 @@
 ---
-layout: home
+layout: doc
 ---
 
 # My Book
@@ -14,6 +14,7 @@ layout: home
 - 响应式设计
 - 搜索功能
 - 暗色主题支持
+- Mermaid 图表支持
 
 ## 快速开始
 
@@ -23,4 +24,4 @@ layout: home
 
 ## 目录
 
-- [第一章：入门指南](/chapters/chapter-1)
+请使用侧边栏导航浏览章节。
