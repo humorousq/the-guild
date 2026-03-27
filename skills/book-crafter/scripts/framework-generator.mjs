@@ -2,11 +2,14 @@ import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { Logger } from '../utils/logger.mjs'
+import { ConfigValidator } from './config-validator.mjs'
+import { OutputFormatter } from './output-formatter.mjs'
 
 export class FrameworkGenerator {
   #projectPath
   #analysis
   #logger
+  #formatter
   #templatePath
 
   constructor(projectPath, analysis) {
@@ -26,6 +29,7 @@ export class FrameworkGenerator {
     this.#projectPath = projectPath
     this.#analysis = analysis
     this.#logger = new Logger()
+    this.#formatter = new OutputFormatter()
 
     // 获取模板路径
     const currentDir = path.dirname(fileURLToPath(import.meta.url))
@@ -151,6 +155,39 @@ export class FrameworkGenerator {
       .replace(/title:\s*"[^"]*"/, `title: "${this.#analysis.title}"`)
       .replace(/description:\s*"[^"]*"/, `description: "${this.#analysis.description}"`)
 
+    // 生成 sidebar 配置（使用扁平路径）
+    const sidebarItems = this.#analysis.chapters.map(chapter => {
+      // 从文件名提取章节编号，例如 chapter-01.md -> chapter-01
+      const link = `/${chapter.file.replace('.md', '')}`
+      return `{ text: '${chapter.title}', link: '${link}' }`
+    })
+
+    // 替换 sidebar 配置
+    const sidebarConfig = `[
+      {
+        text: '开始',
+        items: [
+          { text: '简介', link: '/' },
+${sidebarItems.map(item => `          ${item}`).join(',\n')}
+        ]
+      }
+    ]`
+
+    // 替换整个 sidebar 配置块
+    content = content.replace(
+      /sidebar:\s*\[[\s\S]*?\n    \]/,
+      `sidebar: ${sidebarConfig}`
+    )
+
+    // 更新导航栏的章节链接（如果有多个章节，链接到第一个章节）
+    if (this.#analysis.chapters.length > 0) {
+      const firstChapterLink = `/${this.#analysis.chapters[0].file.replace('.md', '')}`
+      content = content.replace(
+        /{ text: '章节', link: '\/chapters\/chapter-1' }/,
+        `{ text: '章节', link: '${firstChapterLink}' }`
+      )
+    }
+
     await fs.writeFile(configPath, content, 'utf-8')
   }
 
@@ -169,6 +206,24 @@ export class FrameworkGenerator {
         await fs.access(filePath)
       } catch {
         throw new Error(`必需文件不存在: ${file}`)
+      }
+    }
+
+    // 使用 ConfigValidator 验证配置
+    const validator = new ConfigValidator(this.#projectPath)
+    const result = await validator.validate()
+
+    // 显示验证结果
+    this.#formatter.formatValidationResult(result)
+
+    // 如果有错误，生成修复建议
+    if (!result.valid) {
+      const suggestions = validator.generateFixSuggestions(result.errors)
+      if (suggestions.length > 0) {
+        this.#formatter.info('修复建议:')
+        suggestions.forEach((suggestion, i) => {
+          console.log(`  ${i + 1}. ${suggestion}`)
+        })
       }
     }
   }
