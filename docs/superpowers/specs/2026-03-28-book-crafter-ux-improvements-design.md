@@ -44,6 +44,17 @@
    - 有测试文件但可能没有实际测试完整流程
    - 无法发现配置问题
 
+### 功能增强
+
+8. **缺少 Mermaid 图表支持**
+   - 需要手动安装和配置 vitepress-plugin-mermaid
+   - 大部分技术书籍都需要流程图、时序图等
+
+9. **缺少内容质量验证**
+   - 没有检查链接是否有效
+   - 没有检查图片是否存在
+   - 没有检查章节内容是否完整
+
 ---
 
 ## 设计方案
@@ -54,15 +65,16 @@
 
 **新增模块**：
 - `scripts/cli.mjs` - CLI 入口和参数解析
-- `scripts/config-validator.mjs` - VitePress 配置验证器
+- `scripts/config-validator.mjs` - VitePress 配置验证器和内容质量检查
 - `scripts/output-formatter.mjs` - 友好的输出格式化工具
 
 **改进模块**：
 - `workflow-engine.mjs` - 保持纯粹的工作流引擎职责，不再混合 CLI 逻辑
-- `framework-generator.mjs` - 移除验证逻辑到独立模块，简化职责，修复路由生成
+- `framework-generator.mjs` - 移除验证逻辑到独立模块，简化职责，修复路由生成，添加 Mermaid 支持
 - `reference-analyzer.mjs` - 增强输出格式，添加智能建议
+- `templates/vitepress-flat/package.json` - 添加 Mermaid 依赖
 - `templates/vitepress-flat/docs/index.md` - 修正 layout 配置
-- `templates/vitepress-flat/docs/.vitepress/config.mts` - 修正路由配置模板
+- `templates/vitepress-flat/docs/.vitepress/config.mts` - 修正路由配置模板，启用 Mermaid
 
 **文件结构**：
 ```
@@ -197,6 +209,9 @@ node scripts/cli.mjs --help                # 显示帮助
 - 验证 VitePress 配置文件的有效性
 - 检查路由配置与实际文件的匹配情况
 - 验证所有链接指向的文件是否存在
+- 检查内部链接有效性（新增）
+- 检查图片资源是否存在（新增）
+- 验证章节内容完整性（新增）
 - 输出验证报告和修复建议
 
 **API 设计**：
@@ -231,6 +246,18 @@ export class ConfigValidator {
       // 4. 验证文件存在性
       const fileErrors = await this.#validateFilesExist()
       errors.push(...fileErrors)
+
+      // 5. 检查内部链接（新增）
+      const linkErrors = await this.#checkInternalLinks()
+      errors.push(...linkErrors)
+
+      // 6. 检查图片资源（新增）
+      const imageErrors = await this.#checkImages()
+      errors.push(...imageErrors)
+
+      // 7. 检查内容完整性（新增）
+      const contentWarnings = await this.#checkContentCompleteness()
+      warnings.push(...contentWarnings)
 
     } catch (error) {
       errors.push({
@@ -325,6 +352,117 @@ export class ConfigValidator {
   }
 
   /**
+   * 检查内部链接有效性（新增）
+   * @private
+   */
+  async #checkInternalLinks() {
+    const errors = []
+    const files = await fg(path.join(this.docsPath, '**/*.md'))
+
+    for (const file of files) {
+      const content = await fs.readFile(file, 'utf-8')
+      // 提取 Markdown 链接 [text](link)
+      const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g
+      let match
+
+      while ((match = linkPattern.exec(content)) !== null) {
+        const link = match[2]
+
+        // 只检查相对路径链接（不检查外部链接）
+        if (!link.startsWith('http://') && !link.startsWith('https://')) {
+          const targetPath = path.resolve(path.dirname(file), link)
+
+          try {
+            await fs.access(targetPath)
+          } catch {
+            errors.push({
+              type: 'BROKEN_INTERNAL_LINK',
+              message: `文件 ${path.basename(file)} 中的链接指向不存在的路径: ${link}`,
+              file,
+              link
+            })
+          }
+        }
+      }
+    }
+
+    return errors
+  }
+
+  /**
+   * 检查图片资源（新增）
+   * @private
+   */
+  async #checkImages() {
+    const errors = []
+    const files = await fg(path.join(this.docsPath, '**/*.md'))
+
+    for (const file of files) {
+      const content = await fs.readFile(file, 'utf-8')
+      // 提取图片链接 ![alt](src)
+      const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g
+      let match
+
+      while ((match = imagePattern.exec(content)) !== null) {
+        const src = match[2]
+
+        // 只检查相对路径图片
+        if (!src.startsWith('http://') && !src.startsWith('https://')) {
+          const imagePath = path.resolve(path.dirname(file), src)
+
+          try {
+            await fs.access(imagePath)
+          } catch {
+            errors.push({
+              type: 'MISSING_IMAGE',
+              message: `文件 ${path.basename(file)} 引用的图片不存在: ${src}`,
+              file,
+              image: src
+            })
+          }
+        }
+      }
+    }
+
+    return errors
+  }
+
+  /**
+   * 检查内容完整性（新增）
+   * @private
+   */
+  async #checkContentCompleteness() {
+    const warnings = []
+    const files = await fg(path.join(this.docsPath, '*.md'))
+
+    for (const file of files) {
+      const content = await fs.readFile(file, 'utf-8')
+      const basename = path.basename(file)
+
+      // 检查是否有待办标记
+      if (content.includes('TODO') || content.includes('待编写')) {
+        warnings.push({
+          type: 'INCOMPLETE_CONTENT',
+          message: `文件 ${basename} 包含未完成的内容标记`,
+          file
+        })
+      }
+
+      // 检查内容长度（太短可能不完整）
+      const lines = content.split('\n').filter(line => !line.startsWith('#')).length
+      if (lines < 5) {
+        warnings.push({
+          type: 'SHORT_CONTENT',
+          message: `文件 ${basename} 内容较少（仅 ${lines} 行），可能不完整`,
+          file
+        })
+      }
+    }
+
+    return warnings
+  }
+
+  /**
    * 链接转文件路径
    */
   #linkToFile(link) {
@@ -344,6 +482,10 @@ export class ConfigValidator {
           return `修改 ${error.file} 的 layout 为 "doc"`
         case 'MISSING_TITLE':
           return `为 ${error.file} 添加标题`
+        case 'BROKEN_INTERNAL_LINK':
+          return `修复 ${path.basename(error.file)} 中的链接: ${error.link}`
+        case 'MISSING_IMAGE':
+          return `添加缺失的图片: ${error.image}`
         default:
           return error.message
       }
@@ -708,6 +850,24 @@ export class ReferenceAnalyzer {
 
 #### 4.4 模板文件改进
 
+**templates/vitepress-flat/package.json**（添加 Mermaid 支持）：
+```json
+{
+  "name": "my-book",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0",
+    "vitepress-plugin-mermaid": "^2.0.0"
+  }
+}
+```
+
 **templates/vitepress-flat/docs/index.md**（修正 layout）：
 ```markdown
 ---
@@ -734,11 +894,13 @@ layout: doc
 3. 启动开发服务器：`npm run docs:dev`
 ```
 
-**templates/vitepress-flat/docs/.vitepress/config.mts**（修正路由模板）：
+**templates/vitepress-flat/docs/.vitepress/config.mts**（修正路由模板，启用 Mermaid）：
 ```javascript
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
+// https://vitepress.dev/reference/site-config
+export default withMermaid(defineConfig({
   title: "My Book",
   description: "A technical book powered by VitePress",
   lang: 'zh-CN',
@@ -761,8 +923,18 @@ export default defineConfig({
     search: {
       provider: 'local'
     }
+  },
+
+  // Mermaid 配置
+  mermaid: {
+    // 参考: https://mermaid.js.org/config/setup/modules/mermaidAPI.html#mermaidapi-configuration-defaults
+    theme: 'default'
+  },
+
+  markdown: {
+    lineNumbers: true
   }
-})
+}))
 ```
 
 ---
@@ -965,14 +1137,88 @@ export default {
         type: 'LAYOUT_ISSUE',
         message: 'index.md 使用 home layout',
         file: 'docs/index.md'
+      },
+      {
+        type: 'BROKEN_INTERNAL_LINK',
+        message: '链接不存在',
+        file: 'docs/chapter-01.md',
+        link: './missing.md'
+      },
+      {
+        type: 'MISSING_IMAGE',
+        message: '图片不存在',
+        file: 'docs/chapter-01.md',
+        image: './images/missing.png'
       }
     ]
 
     const suggestions = validator.generateFixSuggestions(errors)
 
-    expect(suggestions).toHaveLength(2)
+    expect(suggestions).toHaveLength(4)
     expect(suggestions[0]).toContain('修复链接')
     expect(suggestions[1]).toContain('layout 为 "doc"')
+    expect(suggestions[2]).toContain('./missing.md')
+    expect(suggestions[3]).toContain('添加缺失的图片')
+  })
+
+  test('应该检测到内部链接错误', async () => {
+    await createProject({
+      config: `export default {}`,
+      files: [
+        {
+          name: 'chapter-01.md',
+          content: '# Chapter 1\n\n[链接](./missing.md)'
+        }
+      ]
+    })
+
+    const result = await validator.validate()
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        type: 'BROKEN_INTERNAL_LINK'
+      })
+    )
+  })
+
+  test('应该检测到缺失的图片', async () => {
+    await createProject({
+      config: `export default {}`,
+      files: [
+        {
+          name: 'chapter-01.md',
+          content: '# Chapter 1\n\n![图片](./missing.png)'
+        }
+      ]
+    })
+
+    const result = await validator.validate()
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        type: 'MISSING_IMAGE'
+      })
+    )
+  })
+
+  test('应该警告未完成的内容', async () => {
+    await createProject({
+      config: `export default {}`,
+      files: [
+        {
+          name: 'chapter-01.md',
+          content: '# Chapter 1\n\nTODO: 待补充'
+        }
+      ]
+    })
+
+    const result = await validator.validate()
+
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        type: 'INCOMPLETE_CONTENT'
+      })
+    )
   })
 })
 ```
@@ -1272,12 +1518,27 @@ digraph book_crafter_flow {
 - 避免在各模块中散落 console.log
 - 方便未来支持更多输出格式（如 JSON、HTML）
 
+### 为什么扩展 ConfigValidator 而不是创建新模块？
+
+**原因**：
+- 链接、图片、内容检查都是"验证"职责，属于同一领域
+- 可以在一次验证中输出完整的质量报告
+- 避免多个验证器模块的协调问题
+- 测试更集中，不需要在多个文件中重复测试
+
 ### 为什么修正模板而不是动态生成？
 
 **原因**：
 - 模板应该作为"最佳实践"的起点
 - 减少运行时代码复杂度
 - 用户可以自定义模板
+
+### 为什么默认包含 Mermaid 支持？
+
+**原因**：
+- 技术书籍几乎都需要流程图、时序图等
+- 安装配置简单，不需要用户手动操作
+- 不影响不使用 Mermaid 的书籍（插件可选）
 
 ---
 
@@ -1312,6 +1573,12 @@ digraph book_crafter_flow {
 3. **更多验证规则**: 检查内容质量、链接有效性等
 4. **多语言支持**: 支持英文、日文等输出
 5. **插件系统**: 允许用户自定义验证规则
+6. **智能内容生成**: AI 辅助内容创作
+7. **实时预览功能**: 自动启动开发服务器和浏览器
+8. **智能源项目分析**: 提取主题、评估难度、建议章节结构
+9. **多语言书籍支持**: 翻译辅助和术语管理
+10. **书籍模板系统**: 支持教程、参考手册、指南等不同类型
+11. **增量更新功能**: 源项目更新后智能合并变更
 
 ---
 
