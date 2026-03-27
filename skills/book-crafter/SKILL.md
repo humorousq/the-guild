@@ -75,6 +75,27 @@ npm install
 
 ### 完整工作流
 
+使用 CLI 工具：
+
+```bash
+# 1. 初始化工作流
+node scripts/cli.mjs init
+
+# 2. 查看当前状态
+node scripts/cli.mjs status
+
+# 3. 执行下一阶段
+node scripts/cli.mjs next
+
+# 4. 恢复中断的工作流
+node scripts/cli.mjs resume
+
+# 5. 显示帮助信息
+node scripts/cli.mjs --help
+```
+
+或使用 WorkflowEngine API：
+
 ```bash
 # 1. 初始化工作流
 node scripts/workflow-engine.mjs init --path /path/to/my-book
@@ -102,6 +123,47 @@ node scripts/deploy-manager.mjs create-repo my-book
 ```
 
 ## API 参考
+
+### CLI
+
+命令行接口提供简单的工作流操作：
+
+```bash
+# 初始化工作流
+node scripts/cli.mjs init
+
+# 查看状态
+node scripts/cli.mjs status
+
+# 执行下一阶段
+node scripts/cli.mjs next
+
+# 恢复执行
+node scripts/cli.mjs resume
+
+# 显示帮助
+node scripts/cli.mjs --help
+```
+
+编程接口：
+
+```javascript
+import { CLI } from './scripts/cli.mjs'
+
+const cli = new CLI(projectPath)
+
+// 运行命令
+await cli.run(['init'])
+await cli.run(['status'])
+await cli.run(['next'])
+await cli.run(['resume'])
+
+// 解析命令
+const { command, args } = cli.parseCommand(['init', '--option', 'value'])
+
+// 显示帮助
+const helpText = cli.help()
+```
 
 ### WorkflowEngine
 
@@ -182,6 +244,64 @@ await deployer.createGitHubRepo('my-book', { private: false })
 await deployer.push()
 ```
 
+### ConfigValidator
+
+验证 VitePress 配置和项目结构：
+
+```javascript
+import { ConfigValidator } from './scripts/config-validator.mjs'
+
+const validator = new ConfigValidator(projectPath)
+
+// 执行验证
+const result = await validator.validate()
+
+// 验证结果
+console.log(result.valid) // true 或 false
+console.log(result.errors) // 错误列表
+console.log(result.warnings) // 警告列表
+
+// 生成修复建议
+const suggestions = validator.generateFixSuggestions(result.errors)
+```
+
+**验证项目**：
+- ✅ 侧边栏链接有效性
+- ✅ 布局问题检测
+- ✅ 文件存在性
+- ✅ 内部链接完整性
+- ✅ 图片引用检查
+- ✅ 内容完整性检查
+
+### OutputFormatter
+
+格式化输出到控制台：
+
+```javascript
+import { OutputFormatter } from './scripts/output-formatter.mjs'
+
+const formatter = new OutputFormatter()
+
+// 格式化工作流状态
+formatter.formatWorkflowState(state)
+
+// 格式化分析结果
+formatter.formatAnalysisResult(analysis)
+
+// 格式化验证结果
+formatter.formatValidationResult(result)
+
+// 显示浏览器缓存提示
+formatter.formatBrowserCacheTip()
+
+// 输出消息
+formatter.success('操作成功')
+formatter.warn('警告消息')
+formatter.error('错误消息')
+formatter.info('信息消息')
+formatter.step(1, 5, '执行步骤 1')
+```
+
 ## 环境要求
 
 - **Node.js**: >= 22.0.0
@@ -194,6 +314,28 @@ await deployer.push()
 | 模板名称 | 描述 | 适用场景 |
 |---------|------|---------|
 | `vitepress-flat` | 扁平结构的 VitePress 项目 | 单部分书籍、教程 |
+
+### 模板特性
+
+所有模板都包含：
+
+- ✅ **Mermaid 图表支持** - 使用 `vitepress-plugin-mermaid` 插件，支持在 Markdown 中使用 Mermaid 语法绘制流程图、时序图等
+- ✅ **扁平路径结构** - 章节使用 `/chapter-01` 而非 `/chapters/chapter-1`
+- ✅ **中英文支持** - 自动检测标题语言并生成合适的项目名称
+- ✅ **响应式设计** - 支持移动端和桌面端
+- ✅ **暗色主题** - 内置暗色模式切换
+- ✅ **本地搜索** - 内置全文搜索功能
+
+**Mermaid 使用示例**：
+
+````markdown
+```mermaid
+graph LR
+    A[开始] --> B[分析]
+    B --> C[生成]
+    C --> D[部署]
+```
+````
 
 ## 测试
 
