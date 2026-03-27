@@ -30,6 +30,17 @@ export class WorkflowEngine {
    * 初始化工作流
    */
   async init() {
+    // 检查状态文件是否已存在
+    try {
+      await fs.access(this.#statePath)
+      throw new Error('工作流已初始化')
+    } catch (error) {
+      if (error.message === '工作流已初始化') {
+        throw error
+      }
+      // 文件不存在，继续初始化
+    }
+
     // 创建状态目录
     const stateDir = path.dirname(this.#statePath)
     await fs.mkdir(stateDir, { recursive: true })
