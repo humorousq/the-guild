@@ -1,8 +1,15 @@
 import path from 'path'
 import fs from 'fs/promises'
 import fg from 'fast-glob'
+import { OutputFormatter } from './output-formatter.mjs'
 
 export class ReferenceAnalyzer {
+  #formatter
+
+  constructor() {
+    this.#formatter = new OutputFormatter()
+  }
+
   /**
    * 分析参考书籍项目
    * @param {string} projectPath - 项目路径
@@ -15,14 +22,21 @@ export class ReferenceAnalyzer {
     const language = await this.detectLanguage(projectPath)
     const bookType = this.determineBookType({ techStack, structure, chapters })
 
-    return {
+    const result = {
       path: projectPath,
+      title: chapters[0]?.title || 'Unknown Book',
+      description: `A ${bookType} with ${chapters.length} chapters`,
       techStack,
       structure,
       chapters,
       language,
       bookType
     }
+
+    // 格式化输出分析结果
+    this.#formatter.formatAnalysisResult(result)
+
+    return result
   }
 
   /**
