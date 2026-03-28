@@ -122,6 +122,45 @@ node scripts/deploy-manager.mjs init
 node scripts/deploy-manager.mjs create-repo my-book
 ```
 
+## 部署到 GitHub Pages
+
+生成的项目内置了 gh-pages 部署支持。
+
+### 使用工作流部署
+
+```bash
+node scripts/cli.mjs next  # 阶段 6 自动部署
+```
+
+### 使用 CLI 命令部署
+
+```bash
+# 构建项目
+npm run docs:build
+
+# 部署到 GitHub Pages
+node scripts/cli.mjs deploy
+```
+
+### 使用 npm 脚本部署
+
+```bash
+npm run docs:build
+npm run deploy
+```
+
+### 配置 GitHub Pages
+
+部署后需要在 GitHub 仓库设置中配置：
+
+1. 访问 Settings > Pages
+2. Source: Deploy from a branch
+3. Branch: gh-pages
+4. Folder: / (root)
+5. 点击 Save
+
+等待 1-2 分钟后访问：`https://[用户名].github.io/[仓库名]/`
+
 ## API 参考
 
 ### CLI
@@ -233,16 +272,28 @@ await collaborator.applySuggestion(1, suggestion.content)
 ```javascript
 import { DeployManager } from './scripts/deploy-manager.mjs'
 
-const deployer = new DeployManager(projectPath)
+const manager = new DeployManager(projectPath)
 
 // Git 操作
-await deployer.initGit()
-await deployer.commit('Initial commit')
+await manager.initGit()
+await manager.commit('Initial commit')
 
 // GitHub 操作
-await deployer.createGitHubRepo('my-book', { private: false })
-await deployer.push()
+await manager.createGitHubRepo('my-book', { private: false })
+await manager.push()
+
+// 部署到 GitHub Pages（新增）
+const success = await manager.deployToGitHubPages()
+if (success) {
+  console.log('部署成功')
+}
 ```
+
+**deployToGitHubPages() 方法**：
+- 检查构建状态
+- 验证配置文件
+- 执行 npm run deploy
+- 返回 boolean 表示是否成功
 
 ### ConfigValidator
 
