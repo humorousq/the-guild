@@ -263,7 +263,7 @@ ${sidebarItems.map(item => `          ${item}`).join(',\n')}
     // 生成章节列表
     const chaptersList = this.#analysis.chapters.length > 0
       ? this.#analysis.chapters
-          .map(ch => `- [${ch.title}](chapter-${String(ch.number).padStart(2, '0')}.md)`)
+          .map(ch => `- [${ch.title}](${ch.file})`)
           .join('\n')
       : '章节待添加'
 
