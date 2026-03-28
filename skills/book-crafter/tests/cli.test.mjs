@@ -250,3 +250,30 @@ describe('CLI - run 方法', () => {
     await expect(cli.run(['status'])).rejects.toThrow()
   })
 })
+
+describe('CLI - deploy 命令', () => {
+  let cli
+  let tempDir
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'book-crafter-test-'))
+    cli = new CLI(tempDir)
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('应该解析 deploy 命令', () => {
+    const parsed = cli.parseCommand(['deploy'])
+    expect(parsed.command).toBe('deploy')
+    expect(parsed.args).toEqual({})
+  })
+
+  test('应该显示在帮助信息中', () => {
+    const help = cli.help()
+
+    expect(help).toContain('deploy')
+    expect(help).toContain('部署到 GitHub Pages')
+  })
+})

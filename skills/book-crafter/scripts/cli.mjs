@@ -98,6 +98,17 @@ export class CLI {
   }
 
   /**
+   * 部署到 GitHub Pages
+   * @returns {Promise<{success: boolean, message?: string}>}
+   */
+  async deploy() {
+    const { DeployManager } = await import('./deploy-manager.mjs')
+    const manager = new DeployManager(this.#projectPath)
+    await manager.deployToGitHubPages()
+    return { success: true, message: '部署成功' }
+  }
+
+  /**
    * 显示帮助信息
    * @returns {string}
    */
@@ -112,6 +123,7 @@ Book Crafter CLI - AI 驱动的书籍创建工具
   next          执行下一阶段
   resume        恢复执行
   status        显示当前状态
+  deploy        部署到 GitHub Pages
   --help, -h    显示此帮助信息
 
 示例:
@@ -119,6 +131,7 @@ Book Crafter CLI - AI 驱动的书籍创建工具
   node scripts/cli.mjs status
   node scripts/cli.mjs next
   node scripts/cli.mjs resume
+  node scripts/cli.mjs deploy
 
 阶段说明:
   1. 项目初始化 - 创建项目骨架
@@ -150,7 +163,7 @@ Book Crafter CLI - AI 驱动的书籍创建工具
     }
 
     // 验证命令
-    const validCommands = ['init', 'next', 'resume', 'status']
+    const validCommands = ['init', 'next', 'resume', 'status', 'deploy']
     if (!validCommands.includes(firstArg)) {
       throw new Error(`未知命令: ${firstArg}。使用 --help 查看帮助信息`)
     }
@@ -196,6 +209,11 @@ Book Crafter CLI - AI 驱动的书籍创建工具
       },
       status: async () => {
         return await this.status()
+      },
+      deploy: async () => {
+        const result = await this.deploy()
+        this.#formatter.success(result.message)
+        return result
       },
       help: () => {
         const helpText = this.help()
