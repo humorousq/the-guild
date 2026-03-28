@@ -144,7 +144,9 @@ export class FrameworkGenerator {
     const docsPath = path.join(this.#projectPath, 'docs')
 
     for (const chapter of this.#analysis.chapters) {
-      const chapterPath = path.join(docsPath, chapter.file)
+      // 添加防御性检查
+      const fileName = chapter.file || `chapter-${String(chapter.number || 1).padStart(2, '0')}.md`
+      const chapterPath = path.join(docsPath, fileName)
       const content = `# ${chapter.title}\n\n待编写内容...\n`
       await fs.writeFile(chapterPath, content, 'utf-8')
     }
@@ -164,8 +166,10 @@ export class FrameworkGenerator {
 
     // 生成 sidebar 配置（使用扁平路径）
     const sidebarItems = this.#analysis.chapters.map(chapter => {
+      // 添加防御性检查
+      const fileName = chapter.file || `chapter-${String(chapter.number || 1).padStart(2, '0')}.md`
       // 从文件名提取章节编号，例如 chapter-01.md -> chapter-01
-      const link = `/${chapter.file.replace('.md', '')}`
+      const link = `/${fileName.replace('.md', '')}`
       return `{ text: '${chapter.title}', link: '${link}' }`
     })
 

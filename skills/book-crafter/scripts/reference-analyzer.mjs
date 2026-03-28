@@ -127,7 +127,8 @@ export class ReferenceAnalyzer {
       chapters.push({
         path: file,
         title: title || path.basename(file, '.md'),
-        relativePath: path.relative(projectPath, file)
+        relativePath: path.relative(projectPath, file),
+        file: path.basename(file) // 新增：文件名
       })
     }
 

@@ -205,7 +205,7 @@ export class WorkflowEngine {
         title: 'My Book',
         description: 'A new book project',
         chapters: [
-          { number: 1, title: 'Chapter 1', description: 'First chapter' }
+          { number: 1, title: 'Chapter 1', description: 'First chapter', file: 'chapter-01.md' }
         ]
       }
     }
