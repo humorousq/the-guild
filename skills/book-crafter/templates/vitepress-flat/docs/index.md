@@ -22,6 +22,37 @@ layout: doc
 2. 安装依赖：`npm install`
 3. 启动开发服务器：`npm run docs:dev`
 
+## 部署到 GitHub Pages
+
+1. 构建项目：
+   ```bash
+   npm run docs:build
+   ```
+
+2. 部署到 GitHub Pages：
+   ```bash
+   npm run deploy
+   ```
+
+3. 在 GitHub 仓库设置中：
+   - Settings > Pages
+   - Source: Deploy from a branch
+   - Branch: gh-pages
+   - 点击 Save
+
+4. 访问网站：
+   ```
+   https://[用户名].github.io/[仓库名]/
+   ```
+
+## 更新书籍
+
+每次修改内容后：
+```bash
+npm run docs:build
+npm run deploy
+```
+
 ## 目录
 
 请使用侧边栏导航浏览章节。
