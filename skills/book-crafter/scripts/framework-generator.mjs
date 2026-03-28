@@ -1,9 +1,13 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { exec as execCallback } from 'child_process'
+import { promisify } from 'util'
 import { Logger } from '../utils/logger.mjs'
 import { ConfigValidator } from './config-validator.mjs'
 import { OutputFormatter } from './output-formatter.mjs'
+
+const execAsync = promisify(execCallback)
 
 export class FrameworkGenerator {
   #projectPath
@@ -43,23 +47,26 @@ export class FrameworkGenerator {
     this.#logger.section('生成项目框架')
 
     // 1. 复制模板文件
-    this.#logger.step(1, 5, '复制模板文件')
+    this.#logger.step(1, 6, '复制模板文件')
     await this.#copyTemplate()
 
     // 2. 替换占位符
-    this.#logger.step(2, 5, '替换配置占位符')
+    this.#logger.step(2, 6, '替换配置占位符')
     await this.#replacePlaceholders()
 
     // 3. 生成章节文件
-    this.#logger.step(3, 5, '生成章节文件')
+    this.#logger.step(3, 6, '生成章节文件')
     await this.#generateChapterFiles()
 
     // 4. 配置 VitePress
-    this.#logger.step(4, 5, '配置 VitePress')
+    this.#logger.step(4, 6, '配置 VitePress')
     await this.#configureVitePress()
 
-    // 5. 验证项目
-    this.#logger.step(5, 5, '验证项目结构')
+    // 5. 生成 README.md（新增）
+    await this.#generateReadme()
+
+    // 6. 验证项目
+    this.#logger.step(6, 6, '验证项目结构')
     await this.#validateProject()
 
     this.#logger.success('项目框架生成完成')
@@ -226,5 +233,60 @@ ${sidebarItems.map(item => `          ${item}`).join(',\n')}
         })
       }
     }
+  }
+
+  /**
+   * 获取 GitHub 用户名
+   * @returns {Promise<string>} 用户名
+   */
+  async #getGitHubUserName() {
+    try {
+      const { stdout } = await execAsync('git config --get user.name')
+      return stdout.trim() || 'your-username'
+    } catch {
+      return 'your-username'
+    }
+  }
+
+  /**
+   * 生成 README.md
+   */
+  async #generateReadme() {
+    this.#logger.step(5, 6, '生成 README.md')
+
+    const readmePath = path.join(this.#projectPath, 'README.md')
+
+    // 获取用户名和仓库名
+    const userName = await this.#getGitHubUserName()
+    const repoName = path.basename(this.#projectPath)
+
+    // 生成章节列表
+    const chaptersList = this.#analysis.chapters.length > 0
+      ? this.#analysis.chapters
+          .map(ch => `- [${ch.title}](chapter-${String(ch.number).padStart(2, '0')}.md)`)
+          .join('\n')
+      : '章节待添加'
+
+    // 读取模板
+    const templatePath = path.join(this.#templatePath, 'README.md')
+    let readme
+    try {
+      readme = await fs.readFile(templatePath, 'utf-8')
+    } catch (error) {
+      this.#logger.warn('README.md 模板不存在，跳过生成')
+      return
+    }
+
+    // 替换变量
+    readme = readme
+      .replace(/{{bookTitle}}/g, this.#analysis.title)
+      .replace(/{{bookDescription}}/g, this.#analysis.description || '技术书籍项目')
+      .replace(/{{bookAbout}}/g, this.#analysis.description || '技术书籍项目')
+      .replace(/{{userName}}/g, userName)
+      .replace(/{{repoName}}/g, repoName)
+      .replace(/{{chaptersList}}/g, chaptersList)
+
+    // 写入文件
+    await fs.writeFile(readmePath, readme, 'utf-8')
   }
 }

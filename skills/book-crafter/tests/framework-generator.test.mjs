@@ -86,3 +86,88 @@ describe('FrameworkGenerator', () => {
       .toThrow('analysis.chapters 必须是非空数组')
   })
 })
+
+describe('README.md 生成', () => {
+  let testProjectPath
+
+  beforeEach(() => {
+    testProjectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'book-crafter-test-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(testProjectPath, { recursive: true, force: true })
+  })
+
+  test('应该生成包含正确变量的 README.md', async () => {
+    const analysis = {
+      title: 'Test Book',
+      description: 'A test book description',
+      chapters: [
+        { number: 1, title: 'Chapter 1', file: 'chapter-01.md' },
+        { number: 2, title: 'Chapter 2', file: 'chapter-02.md' }
+      ]
+    }
+
+    const generator = new FrameworkGenerator(testProjectPath, analysis)
+    await generator.generate()
+
+    const readme = fs.readFileSync(
+      path.join(testProjectPath, 'README.md'),
+      'utf-8'
+    )
+
+    expect(readme).toContain('Test Book')
+    expect(readme).toContain('A test book description')
+    expect(readme).toContain('Chapter 1')
+    expect(readme).toContain('Chapter 2')
+    expect(readme).toContain('github.io')
+  })
+
+  test('应该处理缺失的 description', async () => {
+    const analysis = {
+      title: 'Test Book',
+      chapters: [{ number: 1, title: 'Chapter 1', file: 'chapter-01.md' }]
+    }
+
+    const generator = new FrameworkGenerator(testProjectPath, analysis)
+    await generator.generate()
+
+    const readme = fs.readFileSync(
+      path.join(testProjectPath, 'README.md'),
+      'utf-8'
+    )
+
+    expect(readme).toContain('Test Book')
+    expect(readme).toContain('技术书籍项目')
+  })
+})
+
+describe('package.json 部署脚本', () => {
+  let testProjectPath
+
+  beforeEach(() => {
+    testProjectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'book-crafter-test-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(testProjectPath, { recursive: true, force: true })
+  })
+
+  test('应该包含 deploy 脚本', async () => {
+    const analysis = {
+      title: 'Test Book',
+      chapters: [{ number: 1, title: 'Chapter 1', file: 'chapter-01.md' }]
+    }
+
+    const generator = new FrameworkGenerator(testProjectPath, analysis)
+    await generator.generate()
+
+    const pkg = JSON.parse(fs.readFileSync(
+      path.join(testProjectPath, 'package.json'),
+      'utf-8'
+    ))
+
+    expect(pkg.scripts.deploy).toBe('gh-pages -d docs/.vitepress/dist')
+    expect(pkg.devDependencies).toHaveProperty('gh-pages')
+  })
+})
