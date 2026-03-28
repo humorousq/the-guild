@@ -37,7 +37,7 @@ layout: doc
 3. 在 GitHub 仓库设置中：
    - Settings > Pages
    - Source: Deploy from a branch
-   - Branch: gh-pages
+   - Branch: gh-pages / (root)
    - 点击 Save
 
 4. 访问网站：
